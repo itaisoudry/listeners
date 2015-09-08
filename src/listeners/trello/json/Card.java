@@ -1,4 +1,4 @@
-package listeners.servlets.json;
+package listeners.trello.json;
 
 import org.codehaus.jackson.annotate.JsonIgnoreProperties;
 
@@ -17,4 +17,6 @@ public class Card {
 	private String id;
 	@JsonProperty("name")
 	private String name;
+	@JsonProperty("closed")
+	private boolean closed;
 }

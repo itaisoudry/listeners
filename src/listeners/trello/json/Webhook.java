@@ -1,4 +1,4 @@
-package listeners.servlets.json;
+package listeners.trello.json;
 
 import org.codehaus.jackson.annotate.JsonIgnoreProperties;
 
@@ -12,9 +12,15 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
-public class Board {
+public class Webhook {
 	@JsonProperty("id")
 	private String id;
-	@JsonProperty("name")
-	private String name;
+	@JsonProperty("description")
+	private String description;
+	@JsonProperty("idModel")
+	private String idModel;
+	@JsonProperty("callbackURL")
+	private String callbackURL;
+	@JsonProperty("active")
+	private boolean active;
 }

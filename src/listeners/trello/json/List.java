@@ -1,4 +1,4 @@
-package listeners.servlets.json;
+package listeners.trello.json;
 
 import org.codehaus.jackson.annotate.JsonIgnoreProperties;
 
@@ -12,9 +12,11 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
-public class Old {
+public class List {
 	@JsonProperty("id")
 	private String id;
 	@JsonProperty("name")
 	private String name;
+	@JsonProperty("closed")
+	private boolean closed;
 }

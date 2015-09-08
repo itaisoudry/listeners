@@ -2,7 +2,10 @@ package listeners.servlets;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.text.DateFormat;
 import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -22,12 +25,15 @@ import org.springframework.web.client.RestTemplate;
 
 import com.google.gson.Gson;
 
-import listeners.servlets.json.RequestBody;
-import listeners.servlets.json.Webhook;
-import listeners.servlets.json.Wrapper;
+import listeners.trello.json.ActionData;
+import listeners.trello.json.Model;
+import listeners.trello.json.RequestBody;
+import listeners.trello.json.Webhook;
+import listeners.trello.json.Wrapper;
 
 /**
- * Servlet implementation class TrelloServlet
+ * Servlet implementation class TrelloServlet NOTE: if pref and labelName in the
+ * json are not in use, delete them.
  */
 @WebServlet("/Trello")
 public class TrelloServlet extends HttpServlet {
@@ -60,8 +66,8 @@ public class TrelloServlet extends HttpServlet {
 	 * The Trello webhooks must confirm the callBackUrl, doing so by using HEAD
 	 * request, if result is 200 than the webhook will be created
 	 */
-	protected void doHead(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
+	protected void doHead(HttpServletRequest request,
+			HttpServletResponse response) throws ServletException, IOException {
 
 		PrintWriter out = response.getWriter();
 		response.setStatus(HttpServletResponse.SC_OK);
@@ -73,8 +79,8 @@ public class TrelloServlet extends HttpServlet {
 	 * @see HttpServlet#doGet(HttpServletRequest request, HttpServletResponse
 	 *      response)
 	 */
-	protected void doGet(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
+	protected void doGet(HttpServletRequest request,
+			HttpServletResponse response) throws ServletException, IOException {
 
 	}
 
@@ -82,8 +88,8 @@ public class TrelloServlet extends HttpServlet {
 	 * @see HttpServlet#doPost(HttpServletRequest request, HttpServletResponse
 	 *      response)
 	 */
-	protected void doPost(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
+	protected void doPost(HttpServletRequest request,
+			HttpServletResponse response) throws ServletException, IOException {
 		try {
 			handleRequest(request, response);
 		} catch (InterruptedException | ParseException e) {
@@ -92,74 +98,131 @@ public class TrelloServlet extends HttpServlet {
 		}
 	}
 
-	public void handleRequest(HttpServletRequest request, HttpServletResponse response)
-			throws IOException, InterruptedException, ParseException {
+	public void handleRequest(HttpServletRequest request,
+			HttpServletResponse response) throws IOException,
+			InterruptedException, ParseException {
 		PrintWriter out = response.getWriter();
 		JSONObject responseJson = new JSONObject();
 		// Get the request body - the body should contain JSON with all the
 		// details about the even that has occurred
 		String requestBody = IOUtils.toString(request.getInputStream());
+		responseJson = buildMessage(requestBody);
+		sendMessage(responseJson);
+		out.print(responseJson);
+		out.close();
 
-		breakDownUri(request.getPathInfo().toString());
+	}
 
-		switch (command) {
-		// add webhook command
-		case "add":
-			out.println(addAccount(requestBody));
+	/*
+	 * Building the message for the user according to the template adding the
+	 * message to the response json and return it to handleRequest.
+	 */
+	private JSONObject buildMessage(String requestBody) {
+		JSONObject responseJson = new JSONObject();
+		Wrapper webhookRequest = new Gson()
+				.fromJson(requestBody, Wrapper.class);
+		boolean closed = false; // archived or not
+		String listId = "", listName = "", cardName = "", comment = "";
+		String boardId = webhookRequest.getModel().getId();
+		String url = webhookRequest.getModel().getUrl();
+		String type = webhookRequest.getAction().getType();
+		String dateString = webhookRequest.getAction().getDate();
+		// Fixing the date format - removing T and Z so I will be able to format
+		// them for the user
+		dateString = StringUtils.replace(
+				StringUtils.replace(dateString, "T", " "), "Z", " ");
+		Date date = null;
+		SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:sss");
+		try {
+			date = df.parse(dateString);
+		} catch (Exception e) {
+
+		}
+
+		ActionData data = webhookRequest.getAction().getData();
+		if (data.getCard() != null) {
+			cardName = data.getCard().getName();
+			comment = data.getText();
+			// If the old field exists meanning the item was moved\restored from
+			// archive
+			if (data.getOld() != null) {
+				closed = data.getCard().isClosed();
+			}
+
+		}
+		if (data.getList() != null) {
+			listId = "list:" + data.getList().getId();
+			listName = data.getList().getName();
+			// If the old field exists meanning the item was moved\restored from
+			// archive
+			if (data.getOld() != null) {
+				closed = data.getList().isClosed();
+			}
+		}
+		/*
+		 * We do not mind if something has been deleted, only if something was
+		 * created or updated\changed.
+		 */
+		StringBuilder builder = new StringBuilder();
+		switch (type) {
+		case "createCard":
+			builder.append("Card \"" + cardName + "\" was Created \n ");
 
 			break;
+		case "updateCard":
+			builder.append("Card \"" + cardName + "\" was Updated \n ");
+			break;
+		case "commentCard":
+			builder.append("New comment for \"" + listName + "\" \n ");
+			builder.append("Card \"" + cardName + "\" \n ");
+			builder.append(date + " \n ");
+			builder.append("By: "
+					+ webhookRequest.getAction().getMemberCreator()
+							.getFullName() + " \n ");
+			builder.append(comment + " \n ");
+
+			break;
+		case "createList":
+			builder.append("List " + listName + " was created \n ");
+			builder.append(date + " \n ");
+			break;
+		case "updateList":
+			// List can be archived or renamed
+
+			if (closed) {
+				builder.append("List " + listName + " was archived \n");
+			} else {
+				builder.append("List " + data.getOld().getName()
+						+ " was renamed \n ");
+				builder.append("New name: " + listName);
+			}
+
+			builder.append(date + " \n ");
+			break;
+		case "updateComment":
+			builder.append("Comment in " + listName + "was edited \n ");
+			builder.append("Edited text: " + data.getAction().getText()
+					+ " \n ");
+			break;
+
 		}
-
-		out.close();
-	}
-
-	/*
-	 * Creating a new webhook for a model in trello userToken - used for
-	 * registering the webhook in trello - unique for each user description -
-	 * webhook description callBackUrl - should be always nir's address idModel
-	 * - the id of the model that we want to connect the webhook with
-	 */
-	private JSONObject addAccount(String body) {
-		JSONObject requestBody = new JSONObject();
-		JSONObject responseJson = new JSONObject();
-		header.add("Content-Type", "application/json");
-
-		RequestBody myResult = new Gson().fromJson(body, RequestBody.class);
-		String url = StringUtils.replace(StringUtils.replace(addWebhookUrl, "[USER_TOKEN]", myResult.getUserToken()),
-				"[APPLICATION_KEY]", API_KEY);
-
-		// set body json
-		requestBody.put("description", myResult.getDescription());
-		requestBody.put("callbackURL", myResult.getCallBackUrl());
-		requestBody.put("idModel", myResult.getIdModel());
-		// execute request
-		request = new HttpEntity<String>(requestBody.toString(), header);
-		result = restTemplate.exchange(url, HttpMethod.POST, request, Webhook.class);
-
-		// set json to return
-		responseJson.put("id", result.getBody().getId());
-		responseJson.put("description", result.getBody().getDescription());
-		responseJson.put("idModel", result.getBody().getIdModel());
-		responseJson.put("callbackURL", result.getBody().getCallbackURL());
-		responseJson.put("active", result.getBody().isActive());
+		builder.append("URL: " + url);
+		// setting the response json
+		responseJson.put("objectId", boardId);
+		responseJson.append("messages", new JSONObject().put("itemId", listId)
+				.append("details", builder.toString()));
 
 		return responseJson;
-
 	}
 
-	/*
-	 * Deleting an existing webhook in trello
-	 */
-	private void removeAccount(String userToken, String webhookId) {
+	private void sendMessage(JSONObject messageBody) {
+		String url = "http://requestb.in/1f9x2vr1";
+		RestTemplate restTemaplte = new RestTemplate();
+		MultiValueMap<String, String> header = new LinkedMultiValueMap<String, String>();
+		HttpEntity<String> request = new HttpEntity<String>(
+				messageBody.toString(), header);
+		HttpEntity<String> result = restTemplate.exchange(url, HttpMethod.POST,
+				request, String.class);
 
 	}
-
-	private void breakDownUri(String uri) {
-		try {
-			command = StringUtils.substringBeforeLast(uri, "/");
-		} catch (Exception e) {
-			command = null;
-		}
-	}
-
 }

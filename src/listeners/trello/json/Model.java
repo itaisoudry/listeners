@@ -1,4 +1,4 @@
-package listeners.servlets.json;
+package listeners.trello.json;
 
 import org.codehaus.jackson.annotate.JsonIgnoreProperties;
 

@@ -1,4 +1,4 @@
-package listeners.servlets.json;
+package listeners.trello.json;
 
 import org.codehaus.jackson.annotate.JsonIgnoreProperties;
 
@@ -12,13 +12,12 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
-public class ActionData {
-	@JsonProperty("board")
-	private Board board;
-	@JsonProperty("list")
-	private List list;
-	@JsonProperty("card")
-	private Card card;
-	@JsonProperty("oldS")
-	private Old old;
+public class Old {
+	@JsonProperty("id")
+	private String id;
+	@JsonProperty("name")
+	private String name;
+	// closed = true - archived, false - not archived
+	@JsonProperty("closed")
+	private boolean closed;
 }

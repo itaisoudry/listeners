@@ -1,4 +1,4 @@
-package listeners.servlets.json;
+package listeners.trello.json;
 
 import org.codehaus.jackson.annotate.JsonIgnoreProperties;
 
@@ -10,10 +10,8 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
-public class RequestBody {
-	private String description;
-	private String idModel;
-	private String callBackUrl;
-	private String userToken;
-	
+public class MemberCreator {
+	private String id;
+	private String fullName;
+	private String username;
 }

@@ -1,4 +1,4 @@
-package listeners.servlets.json;
+package listeners.trello.json;
 
 import org.codehaus.jackson.annotate.JsonIgnoreProperties;
 
@@ -22,7 +22,7 @@ public class Action {
 	@JsonProperty("date")
 	private String date; // (format yyyy-mm-ddThh:mm:ss.sssZ)
 	@JsonProperty("data")
-	private Data data;
+	private ActionData data;
 	@JsonProperty("board")
 	private Board board;
 	@JsonProperty("list")
@@ -31,5 +31,8 @@ public class Action {
 	private Card card;
 	@JsonProperty("memberCreator")
 	private MemberCreator memberCreator;
+	// This field is only active when a comment is being updated
+	@JsonProperty("text")
+	private String text;
 
 }
