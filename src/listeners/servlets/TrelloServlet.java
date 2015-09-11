@@ -1,4 +1,5 @@
 package listeners.servlets;
+
 //10.9
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -46,10 +47,6 @@ public class TrelloServlet extends HttpServlet {
 	private HttpEntity<String> request;
 	private ResponseEntity<Webhook> result;
 
-	private String addWebhookUrl = "https://trello.com/1/tokens/[USER_TOKEN]/webhooks/?key=[APPLICATION_KEY]";
-	private String delWebhookUrl = "https://trello.com/1/webhooks/[WEBHOOK_ID]?key=[APPLICATION_KEY]&token=[USER_TOKEN]";
-	private String command;
-
 	/**
 	 * @see HttpServlet#HttpServlet()
 	 */
@@ -66,8 +63,8 @@ public class TrelloServlet extends HttpServlet {
 	 * The Trello webhooks must confirm the callBackUrl, doing so by using HEAD
 	 * request, if result is 200 than the webhook will be created
 	 */
-	protected void doHead(HttpServletRequest request,
-			HttpServletResponse response) throws ServletException, IOException {
+	protected void doHead(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
 
 		PrintWriter out = response.getWriter();
 		response.setStatus(HttpServletResponse.SC_OK);
@@ -79,8 +76,8 @@ public class TrelloServlet extends HttpServlet {
 	 * @see HttpServlet#doGet(HttpServletRequest request, HttpServletResponse
 	 *      response)
 	 */
-	protected void doGet(HttpServletRequest request,
-			HttpServletResponse response) throws ServletException, IOException {
+	protected void doGet(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
 
 	}
 
@@ -88,8 +85,8 @@ public class TrelloServlet extends HttpServlet {
 	 * @see HttpServlet#doPost(HttpServletRequest request, HttpServletResponse
 	 *      response)
 	 */
-	protected void doPost(HttpServletRequest request,
-			HttpServletResponse response) throws ServletException, IOException {
+	protected void doPost(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
 		try {
 			handleRequest(request, response);
 		} catch (InterruptedException | ParseException e) {
@@ -98,9 +95,8 @@ public class TrelloServlet extends HttpServlet {
 		}
 	}
 
-	public void handleRequest(HttpServletRequest request,
-			HttpServletResponse response) throws IOException,
-			InterruptedException, ParseException {
+	public void handleRequest(HttpServletRequest request, HttpServletResponse response)
+			throws IOException, InterruptedException, ParseException {
 		PrintWriter out = response.getWriter();
 		JSONObject responseJson = new JSONObject();
 		// Get the request body - the body should contain JSON with all the
@@ -119,8 +115,7 @@ public class TrelloServlet extends HttpServlet {
 	 */
 	private JSONObject buildMessage(String requestBody) {
 		JSONObject responseJson = new JSONObject();
-		Wrapper webhookRequest = new Gson()
-				.fromJson(requestBody, Wrapper.class);
+		Wrapper webhookRequest = new Gson().fromJson(requestBody, Wrapper.class);
 		boolean closed = false; // archived or not
 		String listId = "", listName = "", cardName = "", comment = "";
 		String boardId = webhookRequest.getModel().getId();
@@ -129,8 +124,7 @@ public class TrelloServlet extends HttpServlet {
 		String dateString = webhookRequest.getAction().getDate();
 		// Fixing the date format - removing T and Z so I will be able to format
 		// them for the user
-		dateString = StringUtils.replace(
-				StringUtils.replace(dateString, "T", " "), "Z", " ");
+		dateString = StringUtils.replace(StringUtils.replace(dateString, "T", " "), "Z", " ");
 		Date date = null;
 		SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:sss");
 		try {
@@ -176,9 +170,7 @@ public class TrelloServlet extends HttpServlet {
 			builder.append("New comment for \"" + listName + "\" \n ");
 			builder.append("Card \"" + cardName + "\" \n ");
 			builder.append(date + " \n ");
-			builder.append("By: "
-					+ webhookRequest.getAction().getMemberCreator()
-							.getFullName() + " \n ");
+			builder.append("By: " + webhookRequest.getAction().getMemberCreator().getFullName() + " \n ");
 			builder.append(comment + " \n ");
 
 			break;
@@ -192,8 +184,7 @@ public class TrelloServlet extends HttpServlet {
 			if (closed) {
 				builder.append("List " + listName + " was archived \n");
 			} else {
-				builder.append("List " + data.getOld().getName()
-						+ " was renamed \n ");
+				builder.append("List " + data.getOld().getName() + " was renamed \n ");
 				builder.append("New name: " + listName);
 			}
 
@@ -201,28 +192,23 @@ public class TrelloServlet extends HttpServlet {
 			break;
 		case "updateComment":
 			builder.append("Comment in " + listName + "was edited \n ");
-			builder.append("Edited text: " + data.getAction().getText()
-					+ " \n ");
+			builder.append("Edited text: " + data.getAction().getText() + " \n ");
 			break;
 
 		}
 		builder.append("URL: " + url);
 		// setting the response json
 		responseJson.put("objectId", boardId);
-		responseJson.append("messages", new JSONObject().put("itemId", listId)
-				.append("details", builder.toString()));
+		responseJson.append("messages", new JSONObject().put("itemId", listId).append("details", builder.toString()));
 
 		return responseJson;
 	}
 
 	private void sendMessage(JSONObject messageBody) {
-		String url = "http://requestb.in/1f9x2vr1";
-		RestTemplate restTemaplte = new RestTemplate();
+		String url = " https://stagingsite.availo.me:435/chat.svc/TRELLO/chat/messages";
 		MultiValueMap<String, String> header = new LinkedMultiValueMap<String, String>();
-		HttpEntity<String> request = new HttpEntity<String>(
-				messageBody.toString(), header);
-		HttpEntity<String> result = restTemplate.exchange(url, HttpMethod.POST,
-				request, String.class);
+		HttpEntity<String> request = new HttpEntity<String>(messageBody.toString(), header);
+		HttpEntity<String> result = restTemplate.exchange(url, HttpMethod.POST, request, String.class);
 
 	}
 }
